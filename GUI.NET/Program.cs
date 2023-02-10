@@ -66,6 +66,7 @@ namespace Mesen.GUI
 		[HandleProcessCorruptedStateExceptions]
 		private static void Main(string[] args)
 		{
+			Console.WriteLine("HelloWorld");
 			try {
 				Task.Run(() => {
 					//Cache deserializers in another thread
