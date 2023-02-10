@@ -139,7 +139,6 @@ namespace Mesen.GUI.Debugger.Controls
 					}
 				}
 				_imgSprites = sprites;
-				//Console.WriteLine("RefreshViewer");
 
 				using(Graphics g = Graphics.FromImage(_scaledSprites)) {
 					g.Clear(Color.FromArgb(64, 64, 64));
@@ -163,7 +162,6 @@ namespace Mesen.GUI.Debugger.Controls
 				SelectSpriteUnderCursor();
 			}
 			CreateScreenPreview();
-			OutputCharAction();
 			picPreview.Refresh();
 
 			if(_firstDraw) {
@@ -237,13 +235,13 @@ namespace Mesen.GUI.Debugger.Controls
 			GCHandle handle = GCHandle.Alloc(_spritePixelData, GCHandleType.Pinned);
 			try {
 				Bitmap source = new Bitmap(64, 128, 4*64, PixelFormat.Format32bppPArgb, handle.AddrOfPinnedObject());
+
 				using(Graphics g = Graphics.FromImage(_screenPreview)) {
 					g.InterpolationMode = InterpolationMode.NearestNeighbor;
 					g.SmoothingMode = SmoothingMode.None;
 					g.PixelOffsetMode = PixelOffsetMode.Half;
 					g.Clear(Color.Transparent);
 
-					//Console.WriteLine("\n\n\nOnDraw,_spritePatternAddr:{0},_largeSprites:{1}", _spritePatternAddr, _largeSprites);
 					for(int i = 63; i >= 0; i--) {
 						if(i != _selectedSprite) {
 							DrawSprite(source, g, i);
@@ -275,109 +273,12 @@ namespace Mesen.GUI.Debugger.Controls
 			}
 		}
 
-		private void OutputCharAction()
-		{
-
-			int lastX = -1, lastY = -1;
-			bool sameRow = false;
-			int[,] charPos = new int[4, 4];
-			for (int i = 63; i >= 0; i--)
-			{
-				int spriteY = _spriteRam[i * 4];
-				int spriteX = _spriteRam[i * 4 + 3];
-				if (spriteY < 240)
-				{
-					int tileIndex = _spriteRam[i * 4 + 1];
-					int tileAddr = _spritePatternAddr + (tileIndex << 4);
-					sameRow = spriteY == lastY;
-					if(sameRow)
-					{
-						
-					}
-					else
-					{
-
-					}
-				}
-			}
-			GCHandle handle = GCHandle.Alloc(_spritePixelData, GCHandleType.Pinned);
-			try
-			{
-				Bitmap source = new Bitmap(64, 128, 4 * 64, PixelFormat.Format32bppPArgb, handle.AddrOfPinnedObject());
-				//Color pixelColor;
-				//for(int x=0; x < 64; x++)
-				//{
-					//for(int y = 0; y < 128; y++)
-					//{
-						//pixelColor = source.GetPixel(x, y);
-						//Console.WriteLine("{0},{1},{2},{3}", pixelColor.R, pixelColor.G, pixelColor.B, pixelColor.A);
-					//}
-				//}
-				//source.Save("J:\\WorkSpace\\Github\\Mesen\\default.png", System.Drawing.Imaging.ImageFormat.Png);
-
-				int validCnt = 0;
-
-				Bitmap target = new Bitmap(256, 240);
-
-				using (Graphics g = Graphics.FromImage(target))
-				{
-					g.DrawImage(source, 0, 0);
-					target.Save("J:\\WorkSpace\\Github\\Mesen\\test_all.png", System.Drawing.Imaging.ImageFormat.Png);
-
-					g.InterpolationMode = InterpolationMode.NearestNeighbor;
-					g.SmoothingMode = SmoothingMode.None;
-					g.PixelOffsetMode = PixelOffsetMode.Half;
-					g.Clear(Color.Transparent);
-					//g.Clear(Color.FromArgb(0, 0, 0, 0));
-					for (int i = 63; i >= 0; i--)
-					{
-						int spriteY = _spriteRam[i * 4];
-						int spriteX = _spriteRam[i * 4 + 3];
-						if (spriteY < 240)
-						{
-							validCnt += 1;
-							Console.WriteLine("draw one block,x:{0},y{1},i:{2}", spriteX, spriteY, i);
-							g.DrawImage(source, new Rectangle(spriteX, spriteY, 8, 8), new Rectangle((i % 8) * 8, (i / 8) * 16, 8, 8), GraphicsUnit.Pixel);
-							if (validCnt == 8)
-							{
-								//target.Save("J:\\WorkSpace\\Github\\Mesen\\test.png", System.Drawing.Imaging.ImageFormat.Png);
-								//break;
-							}
-							//Console.WriteLine("common index:{0},x:{1},y:{2},address:{3}", i, spriteX, spriteY, tileAddr);
-						}
-					}
-					target.Save("J:\\WorkSpace\\Github\\Mesen\\test.png", System.Drawing.Imaging.ImageFormat.Png);
-				}
-					//g.DrawImage(source, new Rectangle(spriteX, spriteY, 8, _largeSprites ? 16 : 8), new Rectangle((i % 8) * 8, (i / 8) * 16, 8, _largeSprites ? 16 : 8), GraphicsUnit.Pixel);
-				//using (Graphics g = Graphics.FromImage(_screenPreview))
-				//{
-					//g.InterpolationMode = InterpolationMode.NearestNeighbor;
-					//g.SmoothingMode = SmoothingMode.None;
-					//g.PixelOffsetMode = PixelOffsetMode.Half;
-					//g.Clear(Color.Transparent);
-
-					//Console.WriteLine("\n\n\nOnDraw,_spritePatternAddr:{0},_largeSprites:{1}", _spritePatternAddr, _largeSprites);
-					//for (int i = 63; i >= 0; i--)
-					//{
-						//if (i != _selectedSprite)
-						//{
-							//DrawSprite(source, g, i);
-						//}
-					//}
-				//}
-			} finally {
-			}
-		}
-
 		private void DrawSprite(Bitmap source, Graphics g, int i)
 		{
 			int spriteY = _spriteRam[i*4];
 			int spriteX = _spriteRam[i*4+3];
 
 			if(spriteY < 240) {
-				int tileIndex = _spriteRam[i * 4 + 1];
-				int tileAddr= _spritePatternAddr + (tileIndex << 4);
-				//Console.WriteLine("common index:{0},x:{1},y:{2},address:{3}", i, spriteX, spriteY, tileAddr);
 				g.DrawImage(source, new Rectangle(spriteX, spriteY, 8, _largeSprites ? 16 : 8), new Rectangle((i % 8) * 8, (i / 8) * 16, 8, _largeSprites ? 16 : 8), GraphicsUnit.Pixel);
 			}
 
@@ -629,7 +530,6 @@ namespace Mesen.GUI.Debugger.Controls
 					}
 				}
 			}
-
 		}
 
 		private void mnuCopyAllSpritesHdPack_Click(object sender, EventArgs e)
@@ -698,38 +598,6 @@ namespace Mesen.GUI.Debugger.Controls
 			public int SpriteX;
 			public int SpriteY;
 			public int PaletteIndex;
-		}
-
-		private class ActionFrame
-		{
-			private uint RowLimit = 4;
-			private uint ColLimit = 4;
-			private uint BlockSize = 8;
-			private uint LastY = 999;
-
-			public struct BlockData
-			{
-				uint x, y, address;
-			}
-
-			public BlockData[] RowBlockData;
-			public ActionFrame()
-			{
-				RowBlockData = new BlockData[RowLimit];
-			}
-			public void AddBlock(int x, int y, int address)
-			{
-				if (y != LastY)
-				{
-
-				}
-			}
-
-			private bool IsRowFull()
-			{
-
-				return false;
-			}
 		}
 	}
 }
