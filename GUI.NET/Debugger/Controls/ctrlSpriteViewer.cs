@@ -12,6 +12,7 @@ using Mesen.GUI.Controls;
 using System.Drawing.Imaging;
 using Mesen.GUI.Config;
 using Mesen.GUI.Forms;
+using Mesen.GUI.Debugger.CustomTools;
 using System.Drawing.Drawing2D;
 
 namespace Mesen.GUI.Debugger.Controls
@@ -42,6 +43,9 @@ namespace Mesen.GUI.Debugger.Controls
 		private int _originalTileHeight = 0;
 		private Size _originalPreviewSize;
 		private double _scale = 1;
+
+		private const int blockSize = 8;
+		private const int hvMaxBlockCount = 4;
 
 		public ctrlSpriteViewer()
 		{
@@ -275,75 +279,94 @@ namespace Mesen.GUI.Debugger.Controls
 			}
 		}
 
-		private void OutputCharAction()
+		private bool IsInOneFrame(List<TileData> frameBlockInfo, TileData tileData)
 		{
-
-			int lastX = -1, lastY = -1;
-			bool sameRow = false;
-			int[,] charPos = new int[4, 4];
-			for (int i = 63; i >= 0; i--)
+			if (frameBlockInfo.Count == 0)
 			{
-				int spriteY = _spriteRam[i * 4];
-				int spriteX = _spriteRam[i * 4 + 3];
-				if (spriteY < 240)
+				return true;
+			}
+			int index = tileData.Index;
+			// 序号要连接在一起
+			if(index != frameBlockInfo[frameBlockInfo.Count - 1].Index - 1)
+			{
+				return false;
+			}
+			// 判定不等
+			int x = tileData.X;
+			int y = tileData.Y;
+			int disX, disY;
+			int maxDis = blockSize * (hvMaxBlockCount - 1);
+			foreach(var oneBlockInfo in frameBlockInfo)
+			{
+				if(tileData.IsSameAs(oneBlockInfo))
 				{
-					int tileIndex = _spriteRam[i * 4 + 1];
-					int tileAddr = _spritePatternAddr + (tileIndex << 4);
-					sameRow = spriteY == lastY;
-					if(sameRow)
+					return false;
+				}
+				disX = Math.Abs(oneBlockInfo.X - x);
+				disY = Math.Abs(oneBlockInfo.Y - y);
+				if (disX > maxDis || disY > maxDis)
+				{
+					return false;
+				}
+				if(disX == 0 || disY == 0)
+				{
+					if(disX + disY == 0 || (disX + disY) % blockSize != 0)
 					{
-						
-					}
-					else
-					{
-
+						// disX + disY == 0 -> disX和disY都是0，两个tile的xy相同
+						// (disX + disY) % blockSize != 0 -> disX,disY中一个为0，另一个不为0，不为0的那个不是8的倍数，即两个tile同行或者同列，但是距离不是8的倍数
+						return false;
 					}
 				}
+				if (disX % blockSize != 0 && disY % blockSize != 0)
+				{
+					return false;
+				}
 			}
+			return true;
+		}
+
+		private void SaveFrame(Graphics source, Graphics target, List<TileData> frameBlockInfo)
+		{
+			//g.DrawImage(source, new Rectangle(spriteX, spriteY, 8, 8), new Rectangle((i % 8) * 8, (i / 8) * 16, 8, 8), GraphicsUnit.Pixel);
+		}
+
+		private void OutputCharAction()
+		{
 			GCHandle handle = GCHandle.Alloc(_spritePixelData, GCHandleType.Pinned);
 			try
 			{
 				Bitmap source = new Bitmap(64, 128, 4 * 64, PixelFormat.Format32bppPArgb, handle.AddrOfPinnedObject());
-				//Color pixelColor;
-				//for(int x=0; x < 64; x++)
-				//{
-					//for(int y = 0; y < 128; y++)
-					//{
-						//pixelColor = source.GetPixel(x, y);
-						//Console.WriteLine("{0},{1},{2},{3}", pixelColor.R, pixelColor.G, pixelColor.B, pixelColor.A);
-					//}
-				//}
-				//source.Save("J:\\WorkSpace\\Github\\Mesen\\default.png", System.Drawing.Imaging.ImageFormat.Png);
-
-				int validCnt = 0;
-
 				Bitmap target = new Bitmap(256, 240);
-
+				var frameBlockInfo = new List<TileData>();
+				var tileData = new TileData();
 				using (Graphics g = Graphics.FromImage(target))
 				{
 					g.DrawImage(source, 0, 0);
 					target.Save("J:\\WorkSpace\\Github\\Mesen\\test_all.png", System.Drawing.Imaging.ImageFormat.Png);
-
 					g.InterpolationMode = InterpolationMode.NearestNeighbor;
 					g.SmoothingMode = SmoothingMode.None;
 					g.PixelOffsetMode = PixelOffsetMode.Half;
 					g.Clear(Color.Transparent);
-					//g.Clear(Color.FromArgb(0, 0, 0, 0));
 					for (int i = 63; i >= 0; i--)
 					{
 						int spriteY = _spriteRam[i * 4];
 						int spriteX = _spriteRam[i * 4 + 3];
 						if (spriteY < 240)
 						{
-							validCnt += 1;
-							Console.WriteLine("draw one block,x:{0},y{1},i:{2}", spriteX, spriteY, i);
-							g.DrawImage(source, new Rectangle(spriteX, spriteY, 8, 8), new Rectangle((i % 8) * 8, (i / 8) * 16, 8, 8), GraphicsUnit.Pixel);
-							if (validCnt == 8)
+							tileData.X = spriteX;
+							tileData.Y = spriteY;
+							tileData.Index = i;
+							if (!IsInOneFrame(frameBlockInfo, tileData))
 							{
-								//target.Save("J:\\WorkSpace\\Github\\Mesen\\test.png", System.Drawing.Imaging.ImageFormat.Png);
-								//break;
+								//SaveFrame(source, target, frameBlockInfo);
+								frameBlockInfo.Clear();
 							}
-							//Console.WriteLine("common index:{0},x:{1},y:{2},address:{3}", i, spriteX, spriteY, tileAddr);
+							frameBlockInfo.Add(tileData);
+							if(i == 0)
+							{
+								//SaveFrame(source, target, frameBlockInfo);
+							}
+							g.DrawImage(source, new Rectangle(spriteX, spriteY, 8, 8), new Rectangle((i % 8) * 8, (i / 8) * 16, 8, 8), GraphicsUnit.Pixel);
 						}
 					}
 					target.Save("J:\\WorkSpace\\Github\\Mesen\\test.png", System.Drawing.Imaging.ImageFormat.Png);

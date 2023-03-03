@@ -60,7 +60,7 @@ namespace Mesen.GUI.Debugger.CustomTools
 
 		public void GetValueFromByte(byte[] spritePixel, int index)
 		{
-			int start = (index / 8) * BytePerPixel * 8 * 8 * 16 + (index % 8) * BytePerPixel * 8 * 16;
+			int start = BytePerPixel * (index / 8) * 8 * 8 * 16 + BytePerPixel * (index % 8) * 8;
 			int r, g, b, a;
 			for(int row=0; row < PixelSize; ++row)
 			{
